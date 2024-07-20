@@ -1,0 +1,745 @@
+;#include <mega16.h>
+;PCODE: $00000000 VOL: 0
+	#ifndef __SLEEP_DEFINED__
+;PCODE: $00000001 VOL: 0
+	#define __SLEEP_DEFINED__
+;PCODE: $00000002 VOL: 0
+	.EQU __se_bit=0x40
+;PCODE: $00000003 VOL: 0
+	.EQU __sm_mask=0xB0
+;PCODE: $00000004 VOL: 0
+	.EQU __sm_powerdown=0x20
+;PCODE: $00000005 VOL: 0
+	.EQU __sm_powersave=0x30
+;PCODE: $00000006 VOL: 0
+	.EQU __sm_standby=0xA0
+;PCODE: $00000007 VOL: 0
+	.EQU __sm_ext_standby=0xB0
+;PCODE: $00000008 VOL: 0
+	.EQU __sm_adc_noise_red=0x10
+;PCODE: $00000009 VOL: 0
+	.SET power_ctrl_reg=mcucr
+;PCODE: $0000000A VOL: 0
+	#endif
+;PCODE: $0000000B VOL: 0
+;PCODE: $0000000C VOL: 0
+;#include <delay.h>
+;#include <stdio.h>
+;PCODE: $0000000D VOL: 0
+	#ifndef __SLEEP_DEFINED__
+;PCODE: $0000000E VOL: 0
+	#define __SLEEP_DEFINED__
+;PCODE: $0000000F VOL: 0
+	.EQU __se_bit=0x40
+;PCODE: $00000010 VOL: 0
+	.EQU __sm_mask=0xB0
+;PCODE: $00000011 VOL: 0
+	.EQU __sm_powerdown=0x20
+;PCODE: $00000012 VOL: 0
+	.EQU __sm_powersave=0x30
+;PCODE: $00000013 VOL: 0
+	.EQU __sm_standby=0xA0
+;PCODE: $00000014 VOL: 0
+	.EQU __sm_ext_standby=0xB0
+;PCODE: $00000015 VOL: 0
+	.EQU __sm_adc_noise_red=0x10
+;PCODE: $00000016 VOL: 0
+	.SET power_ctrl_reg=mcucr
+;PCODE: $00000017 VOL: 0
+	#endif
+;PCODE: $00000018 VOL: 0
+;PCODE: $00000019 VOL: 0
+;#include <alcd.h>
+;
+;#define F_CPU 8000000UL
+;#define BAUD 9600
+;#define UBRR_VALUE ((F_CPU / (BAUD * 16UL)) - 1)
+;
+;#define PIR_SENSOR PINC .0
+;
+;#define LIGHT_SENSOR_PIN 0
+;
+;#define BUTTON1_PIN PIND .2
+;#define BUTTON2_PIN PIND .3
+;#define BUTTON3_PIN PIND .4
+;#define BUTTON4_PIN PIND .5
+;
+;#define LED_PIN PORTB .3
+;
+;#define ADC_VREF_TYPE ((0 << REFS1) | (1 << REFS0) | (0 << ADLAR))
+;
+;unsigned int light_threshold_day = 512;
+;unsigned int light_threshold_night = 512;
+;
+;unsigned char light_threshold = 50;
+;unsigned char mode = 0; // 1 for mode 1, 2 for mode 2
+;unsigned char mode3 = 0; // 1 for mode 1, 2 for mode 2
+;unsigned char chedo = 0;
+;unsigned int dosang, dosang1;
+;unsigned char song = 1;       // Start with song 1
+
+	.DSEG
+;unsigned char prev_chedo = 0; // Keep track of the previous mode
+;char buffer[16];
+;
+;unsigned int light_value;
+;int delay_counter = 0;
+;
+;void UART_init(unsigned int ubrr)
+; 0000 0027 {
+
+	.CSEG
+;PCODE: $0000001A VOL: 0
+;PCODE: $0000001B VOL: 0
+; 0000 0028     UBRRH = (unsigned char)(ubrr >> 8);
+;PCODE: $0000001C VOL: 0
+;	ubrr -> Y+0
+;PCODE: $0000001D VOL: 0
+;PCODE: $0000001E VOL: 0
+;PCODE: $0000001F VOL: 0
+; 0000 0029     UBRRL = (unsigned char)ubrr;
+;PCODE: $00000020 VOL: 0
+;PCODE: $00000021 VOL: 0
+; 0000 002A     UCSRB = (1 << RXEN) | (1 << TXEN);
+;PCODE: $00000022 VOL: 0
+;PCODE: $00000023 VOL: 0
+; 0000 002B     UCSRC = (1 << URSEL) | (3 << UCSZ0);
+;PCODE: $00000024 VOL: 0
+;PCODE: $00000025 VOL: 0
+; 0000 002C }
+;PCODE: $00000026 VOL: 0
+;PCODE: $00000027 VOL: 0
+;PCODE: $00000028 VOL: 0
+;
+;void ADC_init()
+; 0000 002F {
+;PCODE: $00000029 VOL: 0
+;PCODE: $0000002A VOL: 0
+; 0000 0030     // Ch?n AVCC làm di?n áp tham chi?u, không kích ho?t ch?c nang left adjust
+; 0000 0031     ADMUX = (1 << REFS0);
+;PCODE: $0000002B VOL: 0
+;PCODE: $0000002C VOL: 0
+; 0000 0032 
+; 0000 0033     // Kích ho?t ADC, không ch?n ch? d? chuy?n d?i liên t?c
+; 0000 0034     ADCSRA = (1 << ADEN);
+;PCODE: $0000002D VOL: 0
+;PCODE: $0000002E VOL: 0
+; 0000 0035 
+; 0000 0036     // Ch?n ch? d? chia t? l? 64 (8MHz / 64 = 125kHz)
+; 0000 0037     ADCSRA |= (1 << ADPS2) | (1 << ADPS1);
+;PCODE: $0000002F VOL: 0
+;PCODE: $00000030 VOL: 0
+;PCODE: $00000031 VOL: 0
+; 0000 0038 }
+;PCODE: $00000032 VOL: 0
+;PCODE: $00000033 VOL: 0
+;
+;unsigned int read_adc(unsigned char adc_input)
+; 0000 003B {
+;PCODE: $00000034 VOL: 0
+;PCODE: $00000035 VOL: 0
+; 0000 003C     // Switch ADC channel
+; 0000 003D     ADMUX = (ADMUX & 0xF8) | (adc_input & 0x07);
+;PCODE: $00000036 VOL: 0
+;	adc_input -> Y+0
+;PCODE: $00000037 VOL: 0
+;PCODE: $00000038 VOL: 0
+;PCODE: $00000039 VOL: 0
+;PCODE: $0000003A VOL: 0
+;PCODE: $0000003B VOL: 0
+;PCODE: $0000003C VOL: 0
+;PCODE: $0000003D VOL: 0
+; 0000 003E     // Wait for channel switch to take effect
+; 0000 003F     delay_us(10);
+;PCODE: $0000003E VOL: 0
+; 0000 0040     // Start a new AD conversion
+; 0000 0041     ADCSRA |= (1 << ADSC);
+;PCODE: $0000003F VOL: 0
+;PCODE: $00000040 VOL: 0
+; 0000 0042     // Wait for the conversion to complete
+; 0000 0043     while ((ADCSRA & (1 << ADIF)) == 0)
+;PCODE: $00000041 VOL: 0
+;PCODE: $00000042 VOL: 0
+;PCODE: $00000043 VOL: 0
+;PCODE: $00000044 VOL: 0
+; 0000 0044         ;
+;PCODE: $00000045 VOL: 0
+;PCODE: $00000046 VOL: 0
+; 0000 0045     // Clear the ADIF bit
+; 0000 0046     ADCSRA |= (1 << ADIF);
+;PCODE: $00000047 VOL: 0
+;PCODE: $00000048 VOL: 0
+; 0000 0047     return ADCW;
+;PCODE: $00000049 VOL: 0
+;PCODE: $0000004A VOL: 0
+;PCODE: $0000004B VOL: 0
+; 0000 0048 }
+;PCODE: $0000004C VOL: 0
+;
+;void UART_transmit(unsigned char data)
+; 0000 004B {
+;PCODE: $0000004D VOL: 0
+;PCODE: $0000004E VOL: 0
+; 0000 004C     while (!(UCSRA & (1 << UDRE)))
+;PCODE: $0000004F VOL: 0
+;	data -> Y+0
+;PCODE: $00000050 VOL: 0
+;PCODE: $00000051 VOL: 0
+;PCODE: $00000052 VOL: 0
+;PCODE: $00000053 VOL: 0
+; 0000 004D         ;
+;PCODE: $00000054 VOL: 0
+;PCODE: $00000055 VOL: 0
+; 0000 004E     UDR = data;
+;PCODE: $00000056 VOL: 0
+;PCODE: $00000057 VOL: 0
+; 0000 004F }
+;PCODE: $00000058 VOL: 0
+;PCODE: $00000059 VOL: 0
+;PCODE: $0000005A VOL: 0
+;
+;void sendCommand(unsigned char command, unsigned int argument)
+; 0000 0052 {
+;PCODE: $0000005B VOL: 0
+;PCODE: $0000005C VOL: 0
+; 0000 0053     UART_transmit(0x7E);
+;PCODE: $0000005D VOL: 0
+;	command -> Y+2
+;	argument -> Y+0
+;PCODE: $0000005E VOL: 0
+;PCODE: $0000005F VOL: 0
+; 0000 0054     UART_transmit(0xFF);
+;PCODE: $00000060 VOL: 0
+;PCODE: $00000061 VOL: 0
+; 0000 0055     UART_transmit(0x06);
+;PCODE: $00000062 VOL: 0
+;PCODE: $00000063 VOL: 0
+; 0000 0056     UART_transmit(command);
+;PCODE: $00000064 VOL: 0
+;PCODE: $00000065 VOL: 0
+; 0000 0057     UART_transmit(0x00);
+;PCODE: $00000066 VOL: 0
+;PCODE: $00000067 VOL: 0
+; 0000 0058     UART_transmit((unsigned char)(argument >> 8));
+;PCODE: $00000068 VOL: 0
+;PCODE: $00000069 VOL: 0
+; 0000 0059     UART_transmit((unsigned char)argument);
+;PCODE: $0000006A VOL: 0
+;PCODE: $0000006B VOL: 0
+; 0000 005A     UART_transmit(0xEF);
+;PCODE: $0000006C VOL: 0
+;PCODE: $0000006D VOL: 0
+; 0000 005B     delay_ms(10);
+;PCODE: $0000006E VOL: 0
+;PCODE: $0000006F VOL: 0
+;PCODE: $00000070 VOL: 0
+; 0000 005C }
+;PCODE: $00000071 VOL: 0
+;PCODE: $00000072 VOL: 0
+;PCODE: $00000073 VOL: 0
+;unsigned int map(unsigned int x, unsigned int in_min, unsigned int in_max, unsigned int out_min, unsigned int out_max)
+; 0000 005E {
+;PCODE: $00000074 VOL: 0
+;PCODE: $00000075 VOL: 0
+; 0000 005F     return ((long)(x - in_min) * (long)(out_max - out_min)) / (in_max - in_min) + out_min;
+;PCODE: $00000076 VOL: 0
+;	x -> Y+8
+;	in_min -> Y+6
+;	in_max -> Y+4
+;	out_min -> Y+2
+;	out_max -> Y+0
+;PCODE: $00000077 VOL: 0
+;PCODE: $00000078 VOL: 0
+;PCODE: $00000079 VOL: 0
+;PCODE: $0000007A VOL: 0
+;PCODE: $0000007B VOL: 0
+;PCODE: $0000007C VOL: 0
+;PCODE: $0000007D VOL: 0
+;PCODE: $0000007E VOL: 0
+;PCODE: $0000007F VOL: 0
+;PCODE: $00000080 VOL: 0
+;PCODE: $00000081 VOL: 0
+;PCODE: $00000082 VOL: 0
+;PCODE: $00000083 VOL: 0
+;PCODE: $00000084 VOL: 0
+;PCODE: $00000085 VOL: 0
+;PCODE: $00000086 VOL: 0
+;PCODE: $00000087 VOL: 0
+;PCODE: $00000088 VOL: 0
+;PCODE: $00000089 VOL: 0
+;PCODE: $0000008A VOL: 0
+;PCODE: $0000008B VOL: 0
+;PCODE: $0000008C VOL: 0
+; 0000 0060 }
+;PCODE: $0000008D VOL: 0
+;void main(void)
+; 0000 0062 {
+;PCODE: $0000008E VOL: 0
+; 0000 0063 
+; 0000 0064     DDRC = 0 << DDC0;
+;PCODE: $0000008F VOL: 0
+;PCODE: $00000090 VOL: 0
+; 0000 0065     DDRB = 1 << DDB3;
+;PCODE: $00000091 VOL: 0
+;PCODE: $00000092 VOL: 0
+; 0000 0066     PORTB .3 = 1;
+;PCODE: $00000093 VOL: 0
+;PCODE: $00000094 VOL: 0
+; 0000 0067     DDRD = (0 << DDD2) | (0 << DDD3) | (0 << DDD4) | (0 << DDD5);
+;PCODE: $00000095 VOL: 0
+;PCODE: $00000096 VOL: 0
+; 0000 0068 
+; 0000 0069     UART_init(UBRR_VALUE);
+;PCODE: $00000097 VOL: 0
+;PCODE: $00000098 VOL: 0
+;PCODE: $00000099 VOL: 0
+; 0000 006A     ADC_init();
+;PCODE: $0000009A VOL: 0
+; 0000 006B     lcd_init(16);
+;PCODE: $0000009B VOL: 0
+;PCODE: $0000009C VOL: 0
+; 0000 006C 
+; 0000 006D     //    lcd_gotoxy(0,0);
+; 0000 006E     //    lcd_puts("Khoi Dong");
+; 0000 006F     //
+; 0000 0070     //    sendCommand(0x03, 5);
+; 0000 0071     //    delay_ms(6000);
+; 0000 0072 
+; 0000 0073     while (1)
+;PCODE: $0000009D VOL: 0
+; 0000 0074     {
+; 0000 0075         if (!(BUTTON2_PIN))
+;PCODE: $0000009E VOL: 0
+;PCODE: $0000009F VOL: 0
+;PCODE: $000000A0 VOL: 0
+; 0000 0076         {
+; 0000 0077             chedo = (chedo + 1) % 3;
+;PCODE: $000000A1 VOL: 0
+;PCODE: $000000A2 VOL: 0
+;PCODE: $000000A3 VOL: 0
+;PCODE: $000000A4 VOL: 0
+;PCODE: $000000A5 VOL: 0
+;PCODE: $000000A6 VOL: 0
+;PCODE: $000000A7 VOL: 0
+; 0000 0078         }
+; 0000 0079         while (!(BUTTON2_PIN))
+;PCODE: $000000A8 VOL: 0
+;PCODE: $000000A9 VOL: 0
+;PCODE: $000000AA VOL: 0
+;PCODE: $000000AB VOL: 0
+;PCODE: $000000AC VOL: 0
+; 0000 007A             ;
+;PCODE: $000000AD VOL: 0
+;PCODE: $000000AE VOL: 0
+; 0000 007B         switch (chedo)
+;PCODE: $000000AF VOL: 0
+;PCODE: $000000B0 VOL: 0
+; 0000 007C         {
+; 0000 007D         case 0:
+;PCODE: $000000B1 VOL: 0
+;PCODE: $000000B2 VOL: 0
+; 0000 007E             light_value = read_adc(0);
+;PCODE: $000000B3 VOL: 0
+;PCODE: $000000B4 VOL: 0
+;PCODE: $000000B5 VOL: 0
+; 0000 007F             dosang = map(light_value, 0, 1023, 0, 100); // Map to 8-bit range
+;PCODE: $000000B6 VOL: 0
+;PCODE: $000000B7 VOL: 0
+;PCODE: $000000B8 VOL: 0
+;PCODE: $000000B9 VOL: 0
+;PCODE: $000000BA VOL: 0
+;PCODE: $000000BB VOL: 0
+;PCODE: $000000BC VOL: 0
+;PCODE: $000000BD VOL: 0
+;PCODE: $000000BE VOL: 0
+;PCODE: $000000BF VOL: 0
+;PCODE: $000000C0 VOL: 0
+;PCODE: $000000C1 VOL: 0
+; 0000 0080             dosang = 100 - dosang;
+;PCODE: $000000C2 VOL: 0
+;PCODE: $000000C3 VOL: 0
+;PCODE: $000000C4 VOL: 0
+; 0000 0081             lcd_clear();
+;PCODE: $000000C5 VOL: 0
+; 0000 0082             sprintf(buffer, "Light:%d", dosang);
+;PCODE: $000000C6 VOL: 0
+;PCODE: $000000C7 VOL: 0
+;PCODE: $000000C8 VOL: 0
+;PCODE: $000000C9 VOL: 0
+;PCODE: $000000CA VOL: 0
+;PCODE: $000000CB VOL: 0
+;PCODE: $000000CC VOL: 0
+;PCODE: $000000CD VOL: 0
+;PCODE: $000000CE VOL: 0
+;PCODE: $000000CF VOL: 0
+;PCODE: $000000D0 VOL: 0
+;PCODE: $000000D1 VOL: 0
+; 0000 0083             lcd_gotoxy(0, 0);
+;PCODE: $000000D2 VOL: 0
+;PCODE: $000000D3 VOL: 0
+;PCODE: $000000D4 VOL: 0
+;PCODE: $000000D5 VOL: 0
+; 0000 0084             lcd_puts(buffer);
+;PCODE: $000000D6 VOL: 0
+;PCODE: $000000D7 VOL: 0
+; 0000 0085             if (!(BUTTON1_PIN))
+;PCODE: $000000D8 VOL: 0
+;PCODE: $000000D9 VOL: 0
+;PCODE: $000000DA VOL: 0
+; 0000 0086             {
+; 0000 0087                 mode = (mode + 1) % 2;
+;PCODE: $000000DB VOL: 0
+;PCODE: $000000DC VOL: 0
+;PCODE: $000000DD VOL: 0
+;PCODE: $000000DE VOL: 0
+;PCODE: $000000DF VOL: 0
+;PCODE: $000000E0 VOL: 0
+; 0000 0088             }
+; 0000 0089             while (!(BUTTON1_PIN))
+;PCODE: $000000E1 VOL: 0
+;PCODE: $000000E2 VOL: 0
+;PCODE: $000000E3 VOL: 0
+;PCODE: $000000E4 VOL: 0
+;PCODE: $000000E5 VOL: 0
+; 0000 008A                 ;
+;PCODE: $000000E6 VOL: 0
+;PCODE: $000000E7 VOL: 0
+; 0000 008B             if (mode == 0)
+;PCODE: $000000E8 VOL: 0
+;PCODE: $000000E9 VOL: 0
+; 0000 008C             {
+; 0000 008D                 lcd_gotoxy(9, 0);
+;PCODE: $000000EA VOL: 0
+;PCODE: $000000EB VOL: 0
+;PCODE: $000000EC VOL: 0
+;PCODE: $000000ED VOL: 0
+; 0000 008E                 lcd_puts("AUTO");
+;PCODE: $000000EE VOL: 0
+;PCODE: $000000EF VOL: 0
+;PCODE: $000000F0 VOL: 0
+; 0000 008F             }
+; 0000 0090             else
+;PCODE: $000000F1 VOL: 0
+;PCODE: $000000F2 VOL: 0
+; 0000 0091             {
+; 0000 0092                 lcd_gotoxy(9, 0);
+;PCODE: $000000F3 VOL: 0
+;PCODE: $000000F4 VOL: 0
+;PCODE: $000000F5 VOL: 0
+;PCODE: $000000F6 VOL: 0
+; 0000 0093                 lcd_puts("MANNUAL");
+;PCODE: $000000F7 VOL: 0
+;PCODE: $000000F8 VOL: 0
+;PCODE: $000000F9 VOL: 0
+; 0000 0094             }
+;PCODE: $000000FA VOL: 0
+; 0000 0095             if (PIR_SENSOR && ((mode == 0 && dosang <= light_threshold) || mode == 1))
+;PCODE: $000000FB VOL: 0
+;PCODE: $000000FC VOL: 0
+;PCODE: $000000FD VOL: 0
+;PCODE: $000000FE VOL: 0
+;PCODE: $000000FF VOL: 0
+;PCODE: $00000100 VOL: 0
+;PCODE: $00000101 VOL: 0
+;PCODE: $00000102 VOL: 0
+;PCODE: $00000103 VOL: 0
+;PCODE: $00000104 VOL: 0
+;PCODE: $00000105 VOL: 0
+;PCODE: $00000106 VOL: 0
+;PCODE: $00000107 VOL: 0
+;PCODE: $00000108 VOL: 0
+;PCODE: $00000109 VOL: 0
+;PCODE: $0000010A VOL: 0
+;PCODE: $0000010B VOL: 0
+;PCODE: $0000010C VOL: 0
+;PCODE: $0000010D VOL: 0
+;PCODE: $0000010E VOL: 0
+;PCODE: $0000010F VOL: 0
+; 0000 0096             {
+; 0000 0097                 //                      if(delay_counter == 0) { // Only trigger the action once
+; 0000 0098                 LED_PIN = 0;
+;PCODE: $00000110 VOL: 0
+;PCODE: $00000111 VOL: 0
+; 0000 0099                 sendCommand(0x03, 6);
+;PCODE: $00000112 VOL: 0
+;PCODE: $00000113 VOL: 0
+;PCODE: $00000114 VOL: 0
+;PCODE: $00000115 VOL: 0
+;PCODE: $00000116 VOL: 0
+; 0000 009A                 delay_counter = 150; // Set the counter for 15 seconds delay
+;PCODE: $00000117 VOL: 0
+;PCODE: $00000118 VOL: 0
+; 0000 009B                                      //                      }
+; 0000 009C                 lcd_gotoxy(0, 1);
+;PCODE: $00000119 VOL: 0
+;PCODE: $0000011A VOL: 0
+;PCODE: $0000011B VOL: 0
+;PCODE: $0000011C VOL: 0
+; 0000 009D                 lcd_puts("Motion Detected");
+;PCODE: $0000011D VOL: 0
+;PCODE: $0000011E VOL: 0
+;PCODE: $0000011F VOL: 0
+; 0000 009E             }
+; 0000 009F             else
+;PCODE: $00000120 VOL: 0
+;PCODE: $00000121 VOL: 0
+; 0000 00A0             {
+; 0000 00A1                 if (delay_counter == 0)
+;PCODE: $00000122 VOL: 0
+;PCODE: $00000123 VOL: 0
+;PCODE: $00000124 VOL: 0
+; 0000 00A2                 { // Only reset the LED and LCD when not in delay
+; 0000 00A3                     LED_PIN = 1;
+;PCODE: $00000125 VOL: 0
+;PCODE: $00000126 VOL: 0
+; 0000 00A4                 }
+; 0000 00A5                 lcd_gotoxy(0, 1);
+;PCODE: $00000127 VOL: 0
+;PCODE: $00000128 VOL: 0
+;PCODE: $00000129 VOL: 0
+;PCODE: $0000012A VOL: 0
+;PCODE: $0000012B VOL: 0
+; 0000 00A6                 lcd_puts("No Motion       ");
+;PCODE: $0000012C VOL: 0
+;PCODE: $0000012D VOL: 0
+;PCODE: $0000012E VOL: 0
+; 0000 00A7             }
+;PCODE: $0000012F VOL: 0
+; 0000 00A8             break;
+;PCODE: $00000130 VOL: 0
+; 0000 00A9         case 1:
+;PCODE: $00000131 VOL: 0
+;PCODE: $00000132 VOL: 0
+;PCODE: $00000133 VOL: 0
+; 0000 00AA             // Adjust light_threshold with BUTTON3 and BUTTON4
+; 0000 00AB             if (!(BUTTON3_PIN))
+;PCODE: $00000134 VOL: 0
+;PCODE: $00000135 VOL: 0
+;PCODE: $00000136 VOL: 0
+; 0000 00AC             {
+; 0000 00AD                 light_threshold++;
+;PCODE: $00000137 VOL: 0
+; 0000 00AE                 delay_ms(200);
+;PCODE: $00000138 VOL: 0
+;PCODE: $00000139 VOL: 0
+;PCODE: $0000013A VOL: 0
+; 0000 00AF             }
+; 0000 00B0             if (!(BUTTON4_PIN))
+;PCODE: $0000013B VOL: 0
+;PCODE: $0000013C VOL: 0
+;PCODE: $0000013D VOL: 0
+;PCODE: $0000013E VOL: 0
+; 0000 00B1             {
+; 0000 00B2                 light_threshold--;
+;PCODE: $0000013F VOL: 0
+; 0000 00B3                 if (light_threshold < 0)
+;PCODE: $00000140 VOL: 0
+; 0000 00B4                     light_threshold = 0; // Prevent negative values
+;PCODE: $00000141 VOL: 0
+; 0000 00B5                 delay_ms(200);
+;PCODE: $00000142 VOL: 0
+;PCODE: $00000143 VOL: 0
+;PCODE: $00000144 VOL: 0
+;PCODE: $00000145 VOL: 0
+; 0000 00B6             }
+; 0000 00B7 
+; 0000 00B8             // Display current light_threshold on LCD
+; 0000 00B9             lcd_clear();
+;PCODE: $00000146 VOL: 0
+;PCODE: $00000147 VOL: 0
+; 0000 00BA             sprintf(buffer, "Gioi Han A/S: %d", light_threshold);
+;PCODE: $00000148 VOL: 0
+;PCODE: $00000149 VOL: 0
+;PCODE: $0000014A VOL: 0
+;PCODE: $0000014B VOL: 0
+;PCODE: $0000014C VOL: 0
+;PCODE: $0000014D VOL: 0
+;PCODE: $0000014E VOL: 0
+;PCODE: $0000014F VOL: 0
+;PCODE: $00000150 VOL: 0
+;PCODE: $00000151 VOL: 0
+;PCODE: $00000152 VOL: 0
+;PCODE: $00000153 VOL: 0
+; 0000 00BB             lcd_gotoxy(0, 0);
+;PCODE: $00000154 VOL: 0
+;PCODE: $00000155 VOL: 0
+;PCODE: $00000156 VOL: 0
+;PCODE: $00000157 VOL: 0
+; 0000 00BC             lcd_puts(buffer);
+;PCODE: $00000158 VOL: 0
+;PCODE: $00000159 VOL: 0
+; 0000 00BD             break;
+;PCODE: $0000015A VOL: 0
+; 0000 00BE         case 2:
+;PCODE: $0000015B VOL: 0
+;PCODE: $0000015C VOL: 0
+;PCODE: $0000015D VOL: 0
+; 0000 00BF 
+; 0000 00C0             if (!(BUTTON1_PIN))
+;PCODE: $0000015E VOL: 0
+;PCODE: $0000015F VOL: 0
+;PCODE: $00000160 VOL: 0
+; 0000 00C1             {
+; 0000 00C2                 mode3 = (mode3 + 1) % 2;
+;PCODE: $00000161 VOL: 0
+;PCODE: $00000162 VOL: 0
+;PCODE: $00000163 VOL: 0
+;PCODE: $00000164 VOL: 0
+;PCODE: $00000165 VOL: 0
+;PCODE: $00000166 VOL: 0
+; 0000 00C3             }
+; 0000 00C4             while (!(BUTTON1_PIN))
+;PCODE: $00000167 VOL: 0
+;PCODE: $00000168 VOL: 0
+;PCODE: $00000169 VOL: 0
+;PCODE: $0000016A VOL: 0
+;PCODE: $0000016B VOL: 0
+; 0000 00C5                 ;
+;PCODE: $0000016C VOL: 0
+;PCODE: $0000016D VOL: 0
+; 0000 00C6             if (mode3 == 0)
+;PCODE: $0000016E VOL: 0
+;PCODE: $0000016F VOL: 0
+; 0000 00C7             {
+; 0000 00C8                 lcd_clear();
+;PCODE: $00000170 VOL: 0
+; 0000 00C9                 lcd_gotoxy(2, 1);
+;PCODE: $00000171 VOL: 0
+;PCODE: $00000172 VOL: 0
+;PCODE: $00000173 VOL: 0
+;PCODE: $00000174 VOL: 0
+; 0000 00CA                 lcd_puts("Chua Mo Nhac");
+;PCODE: $00000175 VOL: 0
+;PCODE: $00000176 VOL: 0
+;PCODE: $00000177 VOL: 0
+; 0000 00CB             }
+; 0000 00CC             else
+;PCODE: $00000178 VOL: 0
+;PCODE: $00000179 VOL: 0
+; 0000 00CD             {
+; 0000 00CE                 if (!(BUTTON3_PIN))
+;PCODE: $0000017A VOL: 0
+;PCODE: $0000017B VOL: 0
+;PCODE: $0000017C VOL: 0
+; 0000 00CF                 {
+; 0000 00D0                     song = (song % 4) + 1; // Cycle through songs 1-10
+;PCODE: $0000017D VOL: 0
+;PCODE: $0000017E VOL: 0
+;PCODE: $0000017F VOL: 0
+;PCODE: $00000180 VOL: 0
+;PCODE: $00000181 VOL: 0
+;PCODE: $00000182 VOL: 0
+; 0000 00D1                 }
+; 0000 00D2                 while (!(BUTTON3_PIN))
+;PCODE: $00000183 VOL: 0
+;PCODE: $00000184 VOL: 0
+;PCODE: $00000185 VOL: 0
+;PCODE: $00000186 VOL: 0
+;PCODE: $00000187 VOL: 0
+; 0000 00D3                     ;
+;PCODE: $00000188 VOL: 0
+;PCODE: $00000189 VOL: 0
+; 0000 00D4 
+; 0000 00D5                 if (!(BUTTON4_PIN))
+;PCODE: $0000018A VOL: 0
+;PCODE: $0000018B VOL: 0
+;PCODE: $0000018C VOL: 0
+; 0000 00D6                 {
+; 0000 00D7                     song = ((song - 2 + 4) % 4) + 1; // Cycle through songs 10-1
+;PCODE: $0000018D VOL: 0
+;PCODE: $0000018E VOL: 0
+;PCODE: $0000018F VOL: 0
+;PCODE: $00000190 VOL: 0
+;PCODE: $00000191 VOL: 0
+;PCODE: $00000192 VOL: 0
+;PCODE: $00000193 VOL: 0
+; 0000 00D8                 }
+; 0000 00D9                 while (!(BUTTON4_PIN))
+;PCODE: $00000194 VOL: 0
+;PCODE: $00000195 VOL: 0
+;PCODE: $00000196 VOL: 0
+;PCODE: $00000197 VOL: 0
+;PCODE: $00000198 VOL: 0
+; 0000 00DA                     ; // Wait for button release
+;PCODE: $00000199 VOL: 0
+;PCODE: $0000019A VOL: 0
+; 0000 00DB 
+; 0000 00DC                 sendCommand(0x03, song); // Send command to play the selected song
+;PCODE: $0000019B VOL: 0
+;PCODE: $0000019C VOL: 0
+;PCODE: $0000019D VOL: 0
+;PCODE: $0000019E VOL: 0
+;PCODE: $0000019F VOL: 0
+; 0000 00DD                 lcd_clear();
+;PCODE: $000001A0 VOL: 0
+; 0000 00DE                 sprintf(buffer, "Playing song: %d", song);
+;PCODE: $000001A1 VOL: 0
+;PCODE: $000001A2 VOL: 0
+;PCODE: $000001A3 VOL: 0
+;PCODE: $000001A4 VOL: 0
+;PCODE: $000001A5 VOL: 0
+;PCODE: $000001A6 VOL: 0
+;PCODE: $000001A7 VOL: 0
+;PCODE: $000001A8 VOL: 0
+;PCODE: $000001A9 VOL: 0
+;PCODE: $000001AA VOL: 0
+;PCODE: $000001AB VOL: 0
+;PCODE: $000001AC VOL: 0
+; 0000 00DF                 lcd_gotoxy(0, 0);
+;PCODE: $000001AD VOL: 0
+;PCODE: $000001AE VOL: 0
+;PCODE: $000001AF VOL: 0
+;PCODE: $000001B0 VOL: 0
+; 0000 00E0                 lcd_puts(buffer);
+;PCODE: $000001B1 VOL: 0
+;PCODE: $000001B2 VOL: 0
+; 0000 00E1                 lcd_gotoxy(3, 1);
+;PCODE: $000001B3 VOL: 0
+;PCODE: $000001B4 VOL: 0
+;PCODE: $000001B5 VOL: 0
+;PCODE: $000001B6 VOL: 0
+; 0000 00E2                 lcd_puts("MO NHAC");
+;PCODE: $000001B7 VOL: 0
+;PCODE: $000001B8 VOL: 0
+;PCODE: $000001B9 VOL: 0
+; 0000 00E3             }
+;PCODE: $000001BA VOL: 0
+; 0000 00E4 
+; 0000 00E5             break;
+;PCODE: $000001BB VOL: 0
+; 0000 00E6         }
+;PCODE: $000001BC VOL: 0
+; 0000 00E7         if (delay_counter > 0)
+;PCODE: $000001BD VOL: 0
+;PCODE: $000001BE VOL: 0
+;PCODE: $000001BF VOL: 0
+; 0000 00E8         {
+; 0000 00E9             delay_counter--; // Decrement the delay counter if it's greater than 0
+;PCODE: $000001C0 VOL: 0
+;PCODE: $000001C1 VOL: 0
+;PCODE: $000001C2 VOL: 0
+;PCODE: $000001C3 VOL: 0
+; 0000 00EA         }
+; 0000 00EB         delay_ms(100);
+;PCODE: $000001C4 VOL: 0
+;PCODE: $000001C5 VOL: 0
+;PCODE: $000001C6 VOL: 0
+;PCODE: $000001C7 VOL: 0
+; 0000 00EC     }
+;PCODE: $000001C8 VOL: 0
+;PCODE: $000001C9 VOL: 0
+; 0000 00ED }
+;PCODE: $000001CA VOL: 0
+;PCODE: $000001CB VOL: 0
+;PCODE: $000001CC VOL: 0
+
+	.DSEG
+_0x1C:
+	.BYTE 0x43
+;//            if (prev_chedo == 1 && chedo == 0) {
+;//            sendCommand(0x0E, song); // Send command to stop the song
+;////            lcd_clear();
+;////            lcd_gotoxy(0, 0);
+;////            lcd_puts("Stopped playing");
+;//            }
+;//            prev_chedo = chedo;

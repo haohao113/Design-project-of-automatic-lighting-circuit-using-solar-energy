@@ -1,0 +1,49 @@
+RAM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+song                                                                              0x01A3       1
+buffer                                                                            0x01A4      16
+light_value                                                                       0x01B4       2
+delay_counter                                                                     0x01B6       2
+_base_y                                                                           0x01B8       4
+_lcd_x                                                                            0x01BC       1
+_lcd_y                                                                            0x01BD       1
+_lcd_maxx                                                                         0x01BE       1
+
+EEPROM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+
+Register Allocation
+Variable                                                                          Register  Size
+------------------------------------------------------------------------------------------------
+light_threshold_day                                                               R4,R5        2
+light_threshold_night                                                             R6,R7        2
+light_threshold                                                                   R9           1
+mode                                                                              R8           1
+mode3                                                                             R11          1
+chedo                                                                             R10          1
+dosang                                                                            R12,R13      2
+
+FLASH Allocation [words]
+Function                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+UART_init                                                                         0x000B9     13
+ADC_init                                                                          0x000C6      8
+read_adc                                                                          0x000CE     19
+UART_transmit                                                                     0x000E1      7
+sendCommand                                                                       0x000E8     24
+map                                                                               0x00100     52
+main                                                                              0x00134    262
+put_buff_G100                                                                     0x0023A     64
+_print_G100                                                                       0x0027A    308
+sprintf                                                                           0x003AE     52
+_lcd_write_nibble_G101                                                            0x003E2     20
+_lcd_write_data                                                                   0x003F6     12
+lcd_gotoxy                                                                        0x00402     17
+lcd_clear                                                                         0x00413     14
+lcd_putchar                                                                       0x00421     32
+lcd_puts                                                                          0x00441     17
+lcd_init                                                                          0x00452     47
+strlen                                                                            0x00481     12
+strlenf                                                                           0x0048D     13
